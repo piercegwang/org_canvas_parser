@@ -16,7 +16,7 @@ identifiers = {'OE020B': ['[OE020B - Critical Theory Historical Imagination~ - S
                'OP005': ['[OP005 - Honors Physics - S1]'],
                }
 
-def getURL(component):
+def getURL(component): # Get URL using component from gcal.walk()
     fullurl = str(component.get('url'))
     courseindex = fullurl.find('course_')+7
     course = fullurl[courseindex:courseindex+4]
@@ -32,7 +32,7 @@ def get_data(ICSDIR):
         for component in gcal.walk():
             if component.name == "VEVENT":
                 headline = str(component.get('summary'))
-                for course, strings in identifiers.items():
+                for course, strings in identifiers.items(): #find what course the headline belongs to
                     for identifier in strings:
                         findidentifier = headline.find(identifier)
                         if findidentifier != -1:
@@ -49,6 +49,9 @@ def get_data(ICSDIR):
     return(assignmentlist)
 
 def change_times(assignmentlist):
+    """
+    Fix when some times are set to the wrong time due to being set as full day tasks in the calendar
+    """
     assignments = assignmentlist
     for assignment, attributes in assignments.items():
         if attributes[0].hour == 0 and attributes[0].minute == 0 and attributes[0].tzinfo == None: # Then scheduled as full day task
@@ -58,6 +61,9 @@ def change_times(assignmentlist):
     return assignments
 
 def filter_assignments(assignmentlist, final_delta = 14):
+    """
+    Filter assignments by time, default 14 days in advance
+    """
     start_date = datetime.datetime.now(tz)
     end_date = start_date + datetime.timedelta(days=final_delta)
     final_assignments = {}
