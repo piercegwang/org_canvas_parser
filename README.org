@@ -1,0 +1,2 @@
+* Ical2org
+This is a script I made to parse an ical file (curled by a bash script) into an org-mode file that I can be easily integrated with my org-agenda. See emacs's org-mode for more info.
