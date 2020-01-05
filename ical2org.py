@@ -4,17 +4,11 @@ import datetime
 import pytz
 import dateutil.parser
 import argparse
+import re
 
 ICALORG = "/Users/piercewang/Dropbox/org/gcal.org"
-ICSDIR = "/Users/piercewang/Documents/Projects/Programming/emacs/icalsync/2018-19_assignments.ics"
+ICSDIR = "/Users/piercewang/Documents/Projects/Programming/emacs/icalsync/ohs_assignments.ics"
 tz = pytz.timezone('America/Los_Angeles') # Assuming PST time zone
-identifiers = {'OE020B': ['[OE020B - Critical Theory Historical Imagination~ - S2]'],
-               'ODFRL': ['[ODFRL - Core: Democracy\, Freedom\, Rule of Law* - S2]'],
-               'UM52A': ['[UM52B - UN Multivar Integral Calculus* - S2]'],
-               'OH011A': ['(American Culture & Society~ - Smith - 3(B))',
-                          '[OH011A - American Culture & Society~ - S2]'],
-               'OP005': ['[OP005 - Honors Physics - S2]'],
-               }
 
 def getURL(component): # Get URL using component from gcal.walk()
     fullurl = str(component.get('url'))
@@ -25,28 +19,27 @@ def getURL(component): # Get URL using component from gcal.walk()
     return(f'https://spcs.instructure.com/courses/{course}/assignments/{assignment}')
 
 def get_data(ICSDIR):
+    courses = []
     assignmentlist = {}
-    breakloop = False
     with open(ICSDIR,'rb') as g:
         gcal = Calendar.from_ical(g.read())
         for component in gcal.walk():
             if component.name == "VEVENT":
                 headline = str(component.get('summary'))
-                for course, strings in identifiers.items(): #find what course the headline belongs to
-                    for identifier in strings:
-                        findidentifier = headline.find(identifier)
-                        if findidentifier != -1:
-                            event_course = course
-                            headline = headline[0:findidentifier-1]
-                            breakloop = True
-                            break
-                    if breakloop == True:
-                        breakloop = False
-                        url = getURL(component)
-                        # print(f'{headline}: {component.get("dtend").dt}')
-                        assignmentlist[headline] = [component.get('dtend').dt, event_course, url]
-                        break
-    return(assignmentlist)
+                course = re.search(r"\[([A-Z0-9]{4,7}).*\]", headline) # Obtained course code
+                if course != None:
+                    course = course.group(1)
+                    # Cutting down headline
+                    headline = re.search(r"^(.*) \[.*\]", headline).group(1)
+                    extra_bit = re.search(r"(.*) \(.{30,50}\)", headline)
+                    if extra_bit != None: # Deal with extra bit (e.g. "(American Culture & Society~ - Smith - 3(B))")
+                        headline = extra_bit.group(1)
+                    event_course = course
+                    if not course in courses:
+                        courses.append(course)
+                    url = getURL(component)
+                    assignmentlist[headline] = [component.get('dtend').dt, event_course, url]
+    return (courses, assignmentlist)
 
 def change_times(assignmentlist):
     """
@@ -77,7 +70,7 @@ def create_org(orgdir, assignments):
     daysoftheweek = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
     with open(orgdir,'w') as orgfile:
         orgfile.write("#+PRIORITIES: A E B\n#+FILETAGS: :OHS:gcal:\n#+STARTUP: content indent")
-        for course, attributes in identifiers.items():
+        for course in courses:
             orgfile.write(f'\n* {course} :{course}:')
             for assignment, data in assignments.items():
                 if data[1] == course:
@@ -94,9 +87,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     ICALORG = args.ORG
     ICSDIR = args.ICS
-    assignmentlist = get_data(ICSDIR)
-    assignments_changed = change_times(assignmentlist)
+    courses, assignmentlist = get_data(ICSDIR)
+    assignments_fixed = change_times(assignmentlist)
     if args.timedelta:
-        create_org(ICALORG, filter_assignments(assignments_changed, final_delta = args.timedelta))
+        create_org(ICALORG, filter_assignments(assignments_fixed, final_delta = args.timedelta))
     else:
-        create_org(ICALORG, filter_assignments(assignments_changed))
+        create_org(ICALORG, filter_assignments(assignments_fixed))
