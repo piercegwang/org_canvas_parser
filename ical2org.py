@@ -8,12 +8,12 @@ import argparse
 ICALORG = "/Users/piercewang/Dropbox/org/gcal.org"
 ICSDIR = "/Users/piercewang/Documents/Projects/Programming/emacs/icalsync/2018-19_assignments.ics"
 tz = pytz.timezone('America/Los_Angeles') # Assuming PST time zone
-identifiers = {'OE020B': ['[OE020B - Critical Theory Historical Imagination~ - S1]'],
-               'ODFRL': ['[ODFRL - Core: Democracy, Freedom, Rule of Law* - S1]'],
-               'UM52A': ['[UM52A - UN Multivar Differential Calc* - S1]'],
+identifiers = {'OE020B': ['[OE020B - Critical Theory Historical Imagination~ - S2]'],
+               'ODFRL': ['[ODFRL - Core: Democracy\, Freedom\, Rule of Law* - S2]'],
+               'UM52A': ['[UM52B - UN Multivar Integral Calculus* - S2]'],
                'OH011A': ['(American Culture & Society~ - Smith - 3(B))',
-                          '[OH011A - American Culture & Society~ - S1]'],
-               'OP005': ['[OP005 - Honors Physics - S1]'],
+                          '[OH011A - American Culture & Society~ - S2]'],
+               'OP005': ['[OP005 - Honors Physics - S2]'],
                }
 
 def getURL(component): # Get URL using component from gcal.walk()
@@ -50,7 +50,7 @@ def get_data(ICSDIR):
 
 def change_times(assignmentlist):
     """
-    Fix when some times are set to the wrong time due to being set as full day tasks in the calendar
+    Fix when some times are set to the wrong time due to being set as full day tasks in the calendar (when due at 23:59)
     """
     assignments = assignmentlist
     for assignment, attributes in assignments.items():
@@ -76,12 +76,12 @@ def filter_assignments(assignmentlist, final_delta = 14):
 def create_org(orgdir, assignments):
     daysoftheweek = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
     with open(orgdir,'w') as orgfile:
-        orgfile.write("#+PRIORITIES: A E B\n#+FILETAGS: :OHS:gcal:\n#+STARTUP: content")
+        orgfile.write("#+PRIORITIES: A E B\n#+FILETAGS: :OHS:gcal:\n#+STARTUP: content indent")
         for course, attributes in identifiers.items():
             orgfile.write(f'\n* {course} :{course}:')
             for assignment, data in assignments.items():
                 if data[1] == course:
-                    orgfile.write(f'\n** TODO {assignment}\n   DEADLINE: <{data[0].year:02d}-{data[0].month:02d}-{data[0].day:02d} {daysoftheweek[data[0].weekday()]} {data[0].hour:02d}:{data[0].minute:02d}>\n   :PROPERTIES:\n   :LINK:     {data[2]}\n   :END:')
+                    orgfile.write(f'\n** TODO {assignment}\nDEADLINE: <{data[0].year:02d}-{data[0].month:02d}-{data[0].day:02d} {daysoftheweek[data[0].weekday()]} {data[0].hour:02d}:{data[0].minute:02d}>\n:PROPERTIES:\n:LINK:     {data[2]}\n:END:')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Parse assignments from ics file orgmode assignments.')
