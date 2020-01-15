@@ -10,7 +10,15 @@ ICALORG = "/Users/piercewang/Dropbox/org/gcal.org"
 ICSDIR = "/Users/piercewang/Documents/Projects/Programming/emacs/icalsync/ohs_assignments.ics"
 tz = pytz.timezone('America/Los_Angeles') # Assuming PST time zone
 
-def getURL(component): # Get URL using component from gcal.walk()
+def get_url(component):
+    """Documentation for get_url
+
+    Args: component
+    :param component: A component from gcal.walk()
+    
+    :returns: A string with a URL to the assignment on canvas
+    :raises keyError: None
+    """
     fullurl = str(component.get('url'))
     course = re.search(r'course_([0-9]*)', fullurl)
     course = course.group(1) if course != None else None
@@ -21,15 +29,22 @@ def getURL(component): # Get URL using component from gcal.walk()
     return(f'https://spcs.instructure.com/courses/{course}/assignments/{assignment}')
 
 def get_data(ICSDIR):
-    courses = []
-    assignmentlist = {}
+    """Documentation for get_data()
+
+    Args: ICSDIR
+    :param ICSDIR: A directory path to the ics file.
+    
+    :returns: A dictionary of courses which each have lists of assignment dictionaries
+    :raises keyError: None
+    """
+    course_assignments = {}
     with open(ICSDIR,'rb') as g:
         gcal = Calendar.from_ical(g.read())
         for component in gcal.walk():
             if component.name == "VEVENT":
                 headline = str(component.get('summary'))
                 course = re.search(r"\[([A-Z0-9]{4,7}).*\]", headline) # Obtained course code
-                url = getURL(component)
+                url = get_url(component)
                 if course != None:
                     course = course.group(1)
 
@@ -40,55 +55,80 @@ def get_data(ICSDIR):
                     if extra_bit != None:
                         headline = extra_bit.group(1)
 
-                    event_course = course
-                    if not course in courses:
-                        courses.append(course)
-                    assignmentlist[headline] = [component.get('dtend').dt, event_course, url]
+                    if course not in course_assignments: # Adding course for the first time
+                        course_assignments[course] = []
+
+                    course_assignments[course].append({"headline": headline, "deadline": component.get('dtend').dt, "url": url})
                 else: # Deal with event case
-                    event_course = "Student Community & Resources"
+                    course = "Student Community & Resources"
                     headline = re.search(r"^ ?(.*) \[.*\]", headline).group(1)
-                    if event_course not in courses:
-                        courses.append(event_course)
-                    assignmentlist[headline] = [component.get('dtend').dt, event_course, url]
-                    
-    return (courses, assignmentlist)
+                    if course not in course_assignments:
+                        course_assignments[course] = []
+                    course_assignments[course].append({"headline": headline, "deadline": component.get('dtend').dt, "url": url})
+    return course_assignments
 
-def change_times(assignmentlist):
-    """
+def change_times(course_assignments):
+    """Documentation for change_times
+
     Fix when some times are set to the wrong time due to being set as full day tasks in the calendar (when due at 23:59)
+    Args: course_assignments
+    :param course_assignments: The dictionary with the hierarchy of assignments.
+    
+    :returns: A dict of course_assignments with all times fixed
+    :raises keyError: None
     """
-    assignments = assignmentlist
-    for assignment, attributes in assignments.items():
-        if attributes[0].hour == 0 and attributes[0].minute == 0 and attributes[0].tzinfo == None: # Then scheduled as full day task
-            attributes[0] = attributes[0].replace(hour=23, minute=59, tzinfo=tz)
-        else: # Specific time
-            attributes[0] = attributes[0].astimezone(tz)
-    return assignments
+    for course, assignments in course_assignments.items():
+        for assignment in assignments:
+            if assignment["deadline"].hour == 0 and assignment["deadline"].minute == 0 and assignment["deadline"].tzinfo == None: # Then scheduled as full day task
+                assignment["deadline"] = assignment["deadline"].replace(hour=23, minute=59, tzinfo=tz)
+            else: # Specific time
+                assignment["deadline"] = assignment["deadline"].astimezone(tz)
+    return course_assignments
 
-def filter_assignments(assignmentlist, final_delta = 14):
-    """
-    Filter assignments by time, default 14 days in advance
+def filter_assignments(course_assignments, final_delta = 14):
+    """Documentation for filter_assignments
+
+    Args: course_assignments, final_delta
+    :param course_assignments: The dict of course_assignments
+    :param final_delta: The number of days to look into the future. Default is 14 days in advance
+    
+    :returns: A dict of only the assignments that fall within the dates given
+    :raises keyError: None
     """
     start_date = datetime.datetime.now(tz)
     end_date = start_date + datetime.timedelta(days=final_delta)
-    final_assignments = {}
-    for assignment, data in assignmentlist.items():
-        if (end_date >= data[0] >= start_date):
-            final_assignments[assignment] = data
-    return final_assignments
+    filtered_assignments = {}
+    for course, assignments in course_assignments.items():
+        for assignment in assignments:
+            if (end_date >= assignment["deadline"] >= start_date): # Assignment is in date rage
+                if course not in filtered_assignments:
+                    filtered_assignments[course] = []
+                filtered_assignments[course].append(assignment)
+    return filtered_assignments
 
     
 def create_org(orgdir, assignments):
+    """Documentation for create_org
+
+    Args: orgdir, assignments
+    :param orgdir: path to org file
+    :param assignments: dict of assignments
+    
+    :returns: Nothing, writes to given org file
+    :raises keyError: None
+    """
     daysoftheweek = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
     with open(orgdir,'w') as orgfile:
         orgfile.write("#+PRIORITIES: A E B\n#+FILETAGS: :OHS:gcal:\n#+STARTUP: content indent")
-        for course in courses:
-            orgfile.write(f'\n* {course} :{course}:')
-            for assignment, data in assignments.items():
-                if data[1] == course:
-                    orgfile.write(f'\n** TODO {assignment}\nDEADLINE: <{data[0].year:02d}-{data[0].month:02d}-{data[0].day:02d} {daysoftheweek[data[0].weekday()]} {data[0].hour:02d}:{data[0].minute:02d}>')
-                    if data[2] != None:
-                        orgfile.write(f'\n:PROPERTIES:\n:LINK:     {data[2]}\n:END:')
+        for course, assignments in course_assignments.items():
+            if assignments != []:
+                orgfile.write(f'\n* {course}')
+                if course.find(" ") == -1:
+                    orgfile.write(f' :{course}:')
+                for assignment in assignments:
+                    orgfile.write(f'\n** TODO {assignment["headline"]}\nDEADLINE: <{assignment["deadline"].year:02d}-{assignment["deadline"].month:02d}-{assignment["deadline"].day:02d} {daysoftheweek[assignment["deadline"].weekday()]} {assignment["deadline"].hour:02d}:{assignment["deadline"].minute:02d}>')
+                    if assignment["url"] != None:
+                        orgfile.write(f'\n:PROPERTIES:\n:LINK:     {assignment["url"]}\n:END:')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Parse assignments from ics file orgmode assignments.')
@@ -101,9 +141,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     ICALORG = args.ORG
     ICSDIR = args.ICS
-    courses, assignmentlist = get_data(ICSDIR)
-    assignments_fixed = change_times(assignmentlist)
+    course_assignments = get_data(ICSDIR)
+    course_assignments = change_times(course_assignments)
     if args.timedelta:
-        create_org(ICALORG, filter_assignments(assignments_fixed, final_delta = args.timedelta))
+        course_assignments = filter_assignments(course_assignments, final_delta = args.timedelta)
     else:
-        create_org(ICALORG, filter_assignments(assignments_fixed))
+        course_assignments = filter_assignments(course_assignments)
+    create_org(ICALORG, course_assignments)
