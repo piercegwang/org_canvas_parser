@@ -34,7 +34,8 @@ def get_data(ICSDIR):
     Args: ICSDIR
     :param ICSDIR: A directory path to the ics file.
     
-    :returns: A dictionary of courses which each have lists of assignment dictionaries
+    :returns: A dictionary of courses which each have lists of assignment dictionaries.
+              Structure is as so: {course: [{headline, deadline, url}, {headline, deadline, url}]}
     :raises keyError: None
     """
     course_assignments = {}
