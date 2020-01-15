@@ -12,10 +12,12 @@ tz = pytz.timezone('America/Los_Angeles') # Assuming PST time zone
 
 def getURL(component): # Get URL using component from gcal.walk()
     fullurl = str(component.get('url'))
-    courseindex = fullurl.find('course_')+7
-    course = fullurl[courseindex:courseindex+4]
-    assignmentindex = fullurl.find('assignment_')+11
-    assignment = fullurl[assignmentindex:assignmentindex+5]
+    course = re.search(r'course_([0-9]*)', fullurl)
+    course = course.group(1) if course != None else None
+    assignment = re.search(r'assignment_([0-9]*)', fullurl)
+    assignment = assignment.group(1) if assignment != None else None
+    if course == None or assignment == None:
+        return None
     return(f'https://spcs.instructure.com/courses/{course}/assignments/{assignment}')
 
 def get_data(ICSDIR):
@@ -27,18 +29,28 @@ def get_data(ICSDIR):
             if component.name == "VEVENT":
                 headline = str(component.get('summary'))
                 course = re.search(r"\[([A-Z0-9]{4,7}).*\]", headline) # Obtained course code
+                url = getURL(component)
                 if course != None:
                     course = course.group(1)
+
                     # Cutting down headline
-                    headline = re.search(r"^(.*) \[.*\]", headline).group(1)
+                    headline = re.search(r"^ ?(.*) \[.*\]", headline).group(1)
                     extra_bit = re.search(r"(.*) \(.{30,50}\)", headline)
-                    if extra_bit != None: # Deal with extra bit (e.g. "(American Culture & Society~ - Smith - 3(B))")
+                    # Deal with extra bit (e.g. "(American Culture & Society~ - Smith - 3(B))")
+                    if extra_bit != None:
                         headline = extra_bit.group(1)
+
                     event_course = course
                     if not course in courses:
                         courses.append(course)
-                    url = getURL(component)
                     assignmentlist[headline] = [component.get('dtend').dt, event_course, url]
+                else: # Deal with event case
+                    event_course = "Student Community & Resources"
+                    headline = re.search(r"^ ?(.*) \[.*\]", headline).group(1)
+                    if event_course not in courses:
+                        courses.append(event_course)
+                    assignmentlist[headline] = [component.get('dtend').dt, event_course, url]
+                    
     return (courses, assignmentlist)
 
 def change_times(assignmentlist):
@@ -74,7 +86,9 @@ def create_org(orgdir, assignments):
             orgfile.write(f'\n* {course} :{course}:')
             for assignment, data in assignments.items():
                 if data[1] == course:
-                    orgfile.write(f'\n** TODO {assignment}\nDEADLINE: <{data[0].year:02d}-{data[0].month:02d}-{data[0].day:02d} {daysoftheweek[data[0].weekday()]} {data[0].hour:02d}:{data[0].minute:02d}>\n:PROPERTIES:\n:LINK:     {data[2]}\n:END:')
+                    orgfile.write(f'\n** TODO {assignment}\nDEADLINE: <{data[0].year:02d}-{data[0].month:02d}-{data[0].day:02d} {daysoftheweek[data[0].weekday()]} {data[0].hour:02d}:{data[0].minute:02d}>')
+                    if data[2] != None:
+                        orgfile.write(f'\n:PROPERTIES:\n:LINK:     {data[2]}\n:END:')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Parse assignments from ics file orgmode assignments.')
