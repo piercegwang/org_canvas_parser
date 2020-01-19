@@ -59,13 +59,13 @@ def get_data(ICSDIR):
                     if course not in course_assignments: # Adding course for the first time
                         course_assignments[course] = []
 
-                    course_assignments[course].append({"headline": headline, "deadline": component.get('dtend').dt, "url": url})
+                    course_assignments[course].append({"headline": headline, "deadline": component.get('dtend').dt, "url": url, "todo": "TODO "})
                 else: # Deal with event case
                     course = "Student Community & Resources"
                     headline = re.search(r"^ ?(.*) \[.*\]", headline).group(1)
                     if course not in course_assignments:
                         course_assignments[course] = []
-                    course_assignments[course].append({"headline": headline, "deadline": component.get('dtend').dt, "url": url})
+                    course_assignments[course].append({"headline": headline, "deadline": component.get('dtend').dt, "url": url, "todo": ""})
     return course_assignments
 
 def change_times(course_assignments):
@@ -127,7 +127,11 @@ def create_org(orgdir, assignments):
                 if course.find(" ") == -1:
                     orgfile.write(f' :{course}:')
                 for assignment in assignments:
-                    orgfile.write(f'\n** TODO {assignment["headline"]}\nDEADLINE: <{assignment["deadline"].year:02d}-{assignment["deadline"].month:02d}-{assignment["deadline"].day:02d} {daysoftheweek[assignment["deadline"].weekday()]} {assignment["deadline"].hour:02d}:{assignment["deadline"].minute:02d}>')
+                    orgfile.write(f'\n** {assignment["todo"]}{assignment["headline"]}')
+                    if len(course) > 8:
+                        orgfile.write(f'\n<{assignment["deadline"].year:02d}-{assignment["deadline"].month:02d}-{assignment["deadline"].day:02d} {daysoftheweek[assignment["deadline"].weekday()]}>')
+                    else:
+                        orgfile.write(f'\nDEADLINE: <{assignment["deadline"].year:02d}-{assignment["deadline"].month:02d}-{assignment["deadline"].day:02d} {daysoftheweek[assignment["deadline"].weekday()]} {assignment["deadline"].hour:02d}:{assignment["deadline"].minute:02d}>')
                     if assignment["url"] != None:
                         orgfile.write(f'\n:PROPERTIES:\n:LINK:     {assignment["url"]}\n:END:')
 
