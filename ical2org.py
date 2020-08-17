@@ -1,4 +1,4 @@
-#!/Users/piercewang/anaconda3/bin/python
+#!/usr/bin/python3
 from icalendar import Calendar, Event
 import datetime
 import pytz
@@ -20,13 +20,13 @@ def get_url(component):
     :raises keyError: None
     """
     fullurl = str(component.get('url'))
-    course = re.search(r'course_([0-9]*)', fullurl)
-    course = course.group(1) if course != None else None
+    course_id = re.search(r'course_([0-9]*)', fullurl)
+    course_id = course_id.group(1) if course_id != None else None
     assignment = re.search(r'assignment_([0-9]*)', fullurl)
     assignment = assignment.group(1) if assignment != None else None
-    if course == None or assignment == None:
-        return None
-    return(f'https://spcs.instructure.com/courses/{course}/assignments/{assignment}')
+    if assignment == None:
+        return((fullurl, course_id, None))
+    return((f'https://spcs.instructure.com/courses/{course_id}/assignments/{assignment}', course_id, True if assignment != None else False))
 
 def get_data(ICSDIR):
     """Documentation for get_data()
@@ -43,29 +43,26 @@ def get_data(ICSDIR):
         gcal = Calendar.from_ical(g.read())
         for component in gcal.walk():
             if component.name == "VEVENT":
-                headline = str(component.get('summary'))
-                course = re.search(r"\[([A-Z0-9]{4,7}).*\]", headline) # Obtained course code
-                url = get_url(component)
-                if course != None:
-                    course = course.group(1)
+                url, course_id, assignment = get_url(component)
+                if course_id != None:
+                    headline = str(component.get('summary'))
+                    course = re.search(r"\[(.*)\]$", headline)
+                    course_code = re.search(r"\[([A-Z0-9]{4,7}).*\]", headline) # Obtained course code
+                    if course_code != None:
+                        course_code = course_code.group(1)
+                    else:
+                        course_code = course.group(1)
 
                     # Cutting down headline
                     headline = re.search(r"^ ?(.*) \[.*\]", headline).group(1)
-                    extra_bit = re.search(r"(.*) \(.{30,50}\)", headline)
+                    extra_bit = re.search(r"(.*) \(.{30,65}\)", headline)
                     # Deal with extra bit (e.g. "(American Culture & Society~ - Smith - 3(B))")
                     if extra_bit != None:
                         headline = extra_bit.group(1)
 
-                    if course not in course_assignments: # Adding course for the first time
-                        course_assignments[course] = []
-
-                    course_assignments[course].append({"headline": headline, "deadline": component.get('dtend').dt, "url": url, "todo": "TODO "})
-                else: # Deal with event case
-                    course = "Student Community & Resources"
-                    headline = re.search(r"^ ?(.*) \[.*\]", headline).group(1)
-                    if course not in course_assignments:
-                        course_assignments[course] = []
-                    course_assignments[course].append({"headline": headline, "deadline": component.get('dtend').dt, "url": url, "todo": ""})
+                    if course_code not in course_assignments: # Adding course for the first time
+                        course_assignments[course_code] = []
+                    course_assignments[course_code].append({"task": assignment, "headline": headline, "timestamp": component.get('dtend').dt, "url": url, "todo": "TODO " if assignment else ""})
     return course_assignments
 
 def change_times(course_assignments):
@@ -80,10 +77,10 @@ def change_times(course_assignments):
     """
     for course, assignments in course_assignments.items():
         for assignment in assignments:
-            if assignment["deadline"].hour == 0 and assignment["deadline"].minute == 0 and assignment["deadline"].tzinfo == None: # Then scheduled as full day task
-                assignment["deadline"] = assignment["deadline"].replace(hour=23, minute=59, tzinfo=tz)
+            if assignment["timestamp"].hour == 0 and assignment["timestamp"].minute == 0 and assignment["timestamp"].tzinfo == None: # Then scheduled as full day task
+                assignment["timestamp"] = assignment["timestamp"].replace(hour=23, minute=59, tzinfo=tz)
             else: # Specific time
-                assignment["deadline"] = assignment["deadline"].astimezone(tz)
+                assignment["timestamp"] = assignment["timestamp"].astimezone(tz)
     return course_assignments
 
 def filter_assignments(course_assignments, final_delta = 14):
@@ -101,7 +98,7 @@ def filter_assignments(course_assignments, final_delta = 14):
     filtered_assignments = {}
     for course, assignments in course_assignments.items():
         for assignment in assignments:
-            if (end_date >= assignment["deadline"] >= start_date): # Assignment is in date rage
+            if (end_date >= assignment["timestamp"] >= start_date): # Assignment is in date rage
                 if course not in filtered_assignments:
                     filtered_assignments[course] = []
                 filtered_assignments[course].append(assignment)
@@ -128,10 +125,10 @@ def create_org(orgdir, assignments):
                     orgfile.write(f' :{course}:')
                 for assignment in assignments:
                     orgfile.write(f'\n** {assignment["todo"]}{assignment["headline"]}')
-                    if len(course) > 8:
-                        orgfile.write(f'\n<{assignment["deadline"].year:02d}-{assignment["deadline"].month:02d}-{assignment["deadline"].day:02d} {daysoftheweek[assignment["deadline"].weekday()]}>')
+                    if assignment["task"] == False:
+                        orgfile.write(f'\n<{assignment["timestamp"].year:02d}-{assignment["timestamp"].month:02d}-{assignment["timestamp"].day:02d} {daysoftheweek[assignment["timestamp"].weekday()]}>')
                     else:
-                        orgfile.write(f'\nDEADLINE: <{assignment["deadline"].year:02d}-{assignment["deadline"].month:02d}-{assignment["deadline"].day:02d} {daysoftheweek[assignment["deadline"].weekday()]} {assignment["deadline"].hour:02d}:{assignment["deadline"].minute:02d}>')
+                        orgfile.write(f'\nDEADLINE: <{assignment["timestamp"].year:02d}-{assignment["timestamp"].month:02d}-{assignment["timestamp"].day:02d} {daysoftheweek[assignment["timestamp"].weekday()]} {assignment["timestamp"].hour:02d}:{assignment["timestamp"].minute:02d}>')
                     if assignment["url"] != None:
                         orgfile.write(f'\n:PROPERTIES:\n:LINK:     {assignment["url"]}\n:END:')
 
