@@ -23,7 +23,7 @@ def get_component_info(component):
     course_id = re.search(r'course_([0-9]*)', fullurl)
     course_id = course_id.group(1) if course_id != None else None
     assignment = re.search(r'assignment_([0-9]*)', fullurl)
-    assignment = True if assignment != None else False
+    assignment = assignment.group(1) if assignment != None else False
     if assignment == False:
         return((fullurl, course_id, assignment))
     else:
@@ -97,10 +97,10 @@ def insert_event(course_information, course_code, headline, start_dt, end_dt, ur
 def get_data(icsfile, ignore, date_delta):
     """Documentation for get_data()
 
-    Args: ICSDIR
-    :param icsfile: A directory path to the ics file.
-    :param ignore: An optional arg which is a list of course codes to ignore
-    :param date_delta: An optional arg which is an integer of how many days in the future to look
+    Args: ICSDIR :param icsfile: A directory path to the ics file.
+    :param ignore: An optional arg which is a list of course codes to
+    ignore :param date_delta: An optional arg which is an integer of
+    how many days in the future to look
     
     :returns: A dictionary of courses which each have lists of
     component dictionaries. The component dictionary is identified as
