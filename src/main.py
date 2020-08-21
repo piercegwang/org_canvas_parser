@@ -23,11 +23,11 @@ def get_component_info(component):
     course_id = re.search(r'course_([0-9]*)', fullurl)
     course_id = course_id.group(1) if course_id != None else None
     assignment = re.search(r'assignment_([0-9]*)', fullurl)
-    assignment = assignment.group(1) if assignment != None else False
-    if assignment == False:
-        return((fullurl, course_id, assignment))
+    assignment = assignment.group(1) if assignment != None else None
+    if not assignment:
+        return((fullurl, course_id, False))
     else:
-        return((f'https://spcs.instructure.com/courses/{course_id}/assignments/{assignment}', course_id, assignment))
+        return((f'https://spcs.instructure.com/courses/{course_id}/assignments/{assignment}', course_id, True))
 
 def search_course(event_summary):
     """Documentation for search_course
