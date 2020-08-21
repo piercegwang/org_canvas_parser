@@ -23,10 +23,11 @@ def get_url(component):
     course_id = re.search(r'course_([0-9]*)', fullurl)
     course_id = course_id.group(1) if course_id != None else None
     assignment = re.search(r'assignment_([0-9]*)', fullurl)
-    assignment = assignment.group(1) if assignment != None else None
-    if assignment == None:
-        return((fullurl, course_id, None))
-    return((f'https://spcs.instructure.com/courses/{course_id}/assignments/{assignment}', course_id, True if assignment != None else False))
+    assignment = True if assignment != None else False
+    if assignment == False:
+        return((fullurl, course_id, assignment))
+    else:
+        return((f'https://spcs.instructure.com/courses/{course_id}/assignments/{assignment}', course_id, assignment))
 
 def get_data(ICSDIR):
     """Documentation for get_data()
@@ -140,6 +141,8 @@ if __name__ == "__main__":
                         type=str)
     parser.add_argument('-td', '--timedelta', nargs='?', help="Time Delta (How far to look into the future. Default: 14 days",
                         type=int)
+    parser.add_argument('-ig', '--ignore', nargs='*', help="Class(es) to ignore",
+                        type=str)
     args = parser.parse_args()
     ICALORG = args.ORG
     ICSDIR = args.ICS
@@ -149,4 +152,8 @@ if __name__ == "__main__":
         course_assignments = filter_assignments(course_assignments, final_delta = args.timedelta)
     else:
         course_assignments = filter_assignments(course_assignments)
+    if args.ignore:
+        for class_code in args.ignore:
+            if class_code in course_assignments:
+                course_assignments.pop(class_code)
     create_org(ICALORG, course_assignments)
