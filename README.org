@@ -1,2 +1,5 @@
-* Ical2org
-This is a script I made to parse an ical file (curled by a bash script) into an org-mode file that I can be easily integrated with my org-agenda. See emacs's org-mode for more info.
+* OHS ICS to Org
+This is a program that assists in parsing the calendar I get from my school's Canvas page into Emacs org-mode. In order to streamline the process, I use a bash script to curl the calendar into an ics file which I then feed to the python program using command line arguments. See emacs's org-mode for more info!
+
+* Usage Instructions
+TBD
