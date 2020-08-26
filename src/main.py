@@ -93,8 +93,24 @@ def insert_event(course_information, course_code, headline, start_dt, end_dt, ur
     if course_code not in course_information:
         course_information[course_code] = []
     course_information[course_code].append({"headline": headline, "start_dt": start_dt, "end_dt": end_dt, "url": url})
+
+def in_file(orgignorefile, url):
+    """Documentation for in_file
+
+    Args: orgignorefile, url
+    :param orgignorefile: Path to the org file to search
+    :param url: A string with a url
     
-def get_data(icsfile, ignore, date_delta):
+    :returns: True if the url is found in orgignorefile and False if it's not
+    :raises keyError: None
+    """
+    with open(orgignorefile) as f:
+        if url in f.read():
+            return True
+        else:
+            return False
+    
+def get_data(icsfile, orgignorefile, ignore, date_delta):
     """Documentation for get_data()
 
     Args: ICSDIR :param icsfile: A directory path to the ics file.
@@ -115,7 +131,7 @@ def get_data(icsfile, ignore, date_delta):
         for component in gcal.walk():
             if component.name == "VEVENT":
                 url, course_id, assignment = get_component_info(component)
-                if course_id != None:
+                if course_id != None and not in_file(orgignorefile, url):
                     component_summary = component.get('summary')
                     course_code = search_course(component_summary)
                     headline = filter_headline(component_summary)
@@ -167,6 +183,8 @@ if __name__ == "__main__":
                         type=str)
     parser.add_argument('ORG', help="Path to intended orgmode File",
                         type=str)
+    parser.add_argument('-oi', '--orgignorefile', nargs='?', default="", help="Path to an orgmode file to know which assignments are already in progress.",
+                        type=str)
     parser.add_argument('-td', '--timedelta', nargs='?', default=14, help="Time Delta (How far to look into the future. Default: 14 days",
                         type=int)
     parser.add_argument('-ig', '--ignore', nargs='*', default=[], help="Class(es) to ignore",
@@ -174,5 +192,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
     icsfile = args.ICS
     icalorg = args.ORG
-    course_information = get_data(icsfile, ignore=args.ignore, date_delta=args.timedelta)
+    course_information = get_data(icsfile, args.orgignorefile, args.ignore, args.timedelta)
     create_org(icalorg, course_information)
