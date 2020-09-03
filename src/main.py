@@ -25,7 +25,9 @@ def get_component_info(component):
     assignment = re.search(r'assignment_([0-9]*)', fullurl)
     assignment = assignment.group(1) if assignment != None else None
     if not assignment:
-        return((fullurl, course_id, False))
+        calendar_event = re.search(r'calendar_event_([0-9]*)', fullurl)
+        calendar_event = calendar_event.group(1) if calendar_event != None else None
+        return((f'https://spcs.instructure.com/courses/{course_id}/calendar_events/{calendar_event}', course_id, False))
     else:
         return((f'https://spcs.instructure.com/courses/{course_id}/assignments/{assignment}', course_id, True))
 
