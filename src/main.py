@@ -38,17 +38,17 @@ def search_course(event_summary):
     :param event_summary: A string representing the component summary
     (given ics headline)
     
-    :returns: A string, course_code, which is either the course code,
-    or if the headline did not contain a course code, is the full
-    course name.  :raises keyError: None
+    :returns: A string, course_title, which is the full course name. :raises
+    keyError: None
+
     """
     course = re.search(r"\[(.*)\]$", event_summary)
-    course_code = re.search(r"\[([A-Z0-9]{4,7}).*\]", event_summary) # Attempting to find course code
-    if course_code != None: # If title doesn't have course code, use course title
-        course_code = course_code.group(1)
-    else:
-        course_code = course.group(1)
-    return course_code
+    # course_code = re.search(r"\[([A-Z]{1,2}[0-9]{3,5}).*\]", event_summary) # Attempting to find course code
+    # if course_code != None: # If title doesn't have course code, use course title
+    #     course_code = course_code.group(1)
+    # else:
+    #     course_code = course.group(1)
+    return course.group(1)
 
 def filter_headline(event_summary):
     """Documentation for filter_headline
@@ -84,17 +84,15 @@ def fix_timezone(date_time, task):
         date_time = date_time.astimezone(tz)
     return date_time
 
-def insert_task(course_information, course_code, headline, due, url):
-    # Fix time zone
-    if course_code not in course_information:
-        course_information[course_code] = []
-    course_information[course_code].append({"headline": headline, "due": due, "url": url})
+def insert_task(course_information, course_title, course_id, headline, due, url):
+    if course_title not in course_information:
+        course_information[course_title] = []
+    course_information[course_title].append({"id": course_id, "headline": headline, "due": due, "url": url})
 
-def insert_event(course_information, course_code, headline, start_dt, end_dt, url):
-    # Fix time zones
-    if course_code not in course_information:
-        course_information[course_code] = []
-    course_information[course_code].append({"headline": headline, "start_dt": start_dt, "end_dt": end_dt, "url": url})
+def insert_event(course_information, course_title, course_id, headline, start_dt, end_dt, url):
+    if course_title not in course_information:
+        course_information[course_title] = []
+    course_information[course_title].append({"id": course_id, "headline": headline, "start_dt": start_dt, "end_dt": end_dt, "url": url})
 
 def in_file(orgignorefile, url):
     """Documentation for in_file
@@ -135,18 +133,18 @@ def get_data(icsfile, orgignorefile, ignore, date_delta):
                 url, course_id, assignment = get_component_info(component)
                 if course_id != None and not in_file(orgignorefile, url):
                     component_summary = component.get('summary')
-                    course_code = search_course(component_summary)
+                    course_title = search_course(component_summary)
                     headline = filter_headline(component_summary)
-                    if course_code not in ignore:
+                    if course_title not in ignore:
                         start_dt = fix_timezone(component.get('dtstart').dt, assignment)
                         end_dt = fix_timezone(component.get('dtend').dt, assignment)
-                        date_filter_start = datetime.datetime.now(tz)
-                        date_filter_end = date_filter_start + datetime.timedelta(days=date_delta)
+                        date_filter_start = datetime.datetime.now(tz) - datetime.timedelta(days=7)
+                        date_filter_end = datetime.datetime.now(tz) + datetime.timedelta(days=date_delta)
                         if (date_filter_start <= end_dt <= date_filter_end):
                             if assignment == True:
-                                insert_task(course_information, course_code, headline, end_dt, url)
+                                insert_task(course_information, course_title, course_id, headline, end_dt, url)
                             else:
-                                insert_event(course_information, course_code, headline, start_dt, end_dt, url)
+                                insert_event(course_information, course_title, course_id, headline, start_dt, end_dt, url)
     return course_information
     
 def create_org(orgdir, course_information):
@@ -161,13 +159,12 @@ def create_org(orgdir, course_information):
     """
     daysofweek = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
     with open(orgdir,'w') as orgfile:
-        orgfile.write("#+PRIORITIES: A E B\n#+FILETAGS: :OHS:scal:\n#+STARTUP: content indent")
-        for course, components in course_information.items():
-            if components != []:
+        orgfile.write("#+PRIORITIES: A E B\n#+FILETAGS: :columbia:canv:\n#+STARTUP: content indent")
+        for course, assignments in course_information.items():
+            if assignments != []:
                 orgfile.write(f'\n* {course}')
-                if course.find(" ") == -1:
-                    orgfile.write(f' :{course}:')
-                for comp in components:
+                orgfile.write(f' :{assignments[0]["id"]}:')
+                for comp in assignments:
                     if "due" in comp:
                         orgfile.write(f'\n** NEXT {comp["headline"]}')
                         orgfile.write(f'\nDEADLINE: <{comp["due"].year:02d}-{comp["due"].month:02d}-{comp["due"].day:02d} {daysofweek[comp["due"].weekday()]} {comp["due"].hour:02d}:{comp["due"].minute:02d}>')
