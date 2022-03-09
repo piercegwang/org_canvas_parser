@@ -6,9 +6,9 @@ import dateutil.parser
 import argparse
 import re
 
-tz = pytz.timezone('America/Los_Angeles') # Assuming PST time zone
+tz = pytz.timezone('America/New_York') # Assuming PST time zone
 
-def get_component_info(component):
+def get_component_info(component, base_url):
     """Documentation for get_url
 
     Args: component
@@ -27,9 +27,9 @@ def get_component_info(component):
     if not assignment:
         calendar_event = re.search(r'calendar_event_([0-9]*)', fullurl)
         calendar_event = calendar_event.group(1) if calendar_event != None else None
-        return((f'https://spcs.instructure.com/courses/{course_id}/calendar_events/{calendar_event}', course_id, False))
+        return((f'https://{base_url}/courses/{course_id}/calendar_events/{calendar_event}', course_id, False))
     else:
-        return((f'https://spcs.instructure.com/courses/{course_id}/assignments/{assignment}', course_id, True))
+        return((f'https://{base_url}/courses/{course_id}/assignments/{assignment}', course_id, True))
 
 def search_course(event_summary):
     """Documentation for search_course
@@ -110,7 +110,7 @@ def in_file(orgignorefile, url):
         else:
             return False
     
-def get_data(icsfile, orgignorefile, ignore, date_delta):
+def get_data(icsfile, base_url, orgignorefile, ignore, date_delta):
     """Documentation for get_data()
 
     Args: ICSDIR :param icsfile: A directory path to the ics file.
@@ -130,7 +130,7 @@ def get_data(icsfile, orgignorefile, ignore, date_delta):
         gcal = Calendar.from_ical(g.read())
         for component in gcal.walk():
             if component.name == "VEVENT":
-                url, course_id, assignment = get_component_info(component)
+                url, course_id, assignment = get_component_info(component, base_url)
                 if course_id != None and not in_file(orgignorefile, url):
                     component_summary = component.get('summary')
                     course_title = search_course(component_summary)
@@ -182,6 +182,8 @@ if __name__ == "__main__":
                         type=str)
     parser.add_argument('ORG', help="Path to intended orgmode File",
                         type=str)
+    parser.add_argument('URL', help="Base URL to canvas",
+                        type=str)
     parser.add_argument('-oi', '--orgignorefile', nargs='?', default="", help="Path to an orgmode file to know which assignments are already in progress.",
                         type=str)
     parser.add_argument('-td', '--timedelta', nargs='?', default=14, help="Time Delta (How far to look into the future. Default: 14 days",
@@ -191,5 +193,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     icsfile = args.ICS
     icalorg = args.ORG
-    course_information = get_data(icsfile, args.orgignorefile, args.ignore, args.timedelta)
+    base_url = args.URL
+    course_information = get_data(icsfile, base_url, args.orgignorefile, args.ignore, args.timedelta)
     create_org(icalorg, course_information)
