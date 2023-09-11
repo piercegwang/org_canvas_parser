@@ -190,7 +190,10 @@ def org_course_creation(course, assignments):
             else:
                 output += f'\n<{comp["start_dt"].year:02d}-{comp["start_dt"].month:02d}-{comp["start_dt"].day:02d} {daysofweek[comp["start_dt"].weekday()]} {comp["start_dt"].hour:02d}:{comp["start_dt"].minute:02d}-{comp["end_dt"].hour:02d}:{comp["end_dt"].minute:02d}>'
         output += f'\n:PROPERTIES:\n:LINK:     {comp["url"]}\n:END:'
-        output += "\n " + comp["description"].replace("\n", "\n ") + "\n"
+        if comp["description"] is not None:
+            output += "\n " + comp["description"].replace("\n", "\n ") + "\n"
+        else:
+            output += "\n";
 
     return output
 
