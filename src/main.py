@@ -88,8 +88,17 @@ def make_date(ics_event, assignment):
         else:
             return (due_date.astimezone(tz), None)
     else:
-        date_start = ics_event.get('dtstart').dt.astimezone(tz) if ics_event.get('dtstart').dt.tzinfo != None else ics_event.get('dtstart').dt.replace(hour=0, minute=0, tzinfo=tz)
-        date_end = ics_event.get('dtend').dt.astimezone(tz) if ics_event.get('dtend').dt.tzinfo != None else ics_event.get('dtend').dt.replace(hour=0, minute=0, tzinfo=tz)
+        dtstart = ics_event.get('dtstart').dt
+        dtend = ics_event.get('dtend').dt if ics_event.get('dtend') is not None else ics_event.get('dtstart').dt
+        print(type(dtstart))
+        if type(dtstart) == datetime.date:
+            date_start = datetime.datetime(dtstart.year, dtstart.month, dtstart.day, 00, 00, tzinfo=tz)
+        else:
+            date_start = dtstart.astimezone(tz) if dtstart.tzinfo != None else dtstart.replace(hour=0, minute=0, tzinfo=tz)
+        if type(dtend) == datetime.date:
+            date_end = datetime.datetime(dtend.year, dtend.month, dtend.day, 23, 59, tzinfo=tz)
+        else:
+            date_end = dtend.astimezone(tz) if dtend.tzinfo != None else dtend.replace(hour=0, minute=0, tzinfo=tz)
         return (date_start, date_end)
 
 
@@ -98,7 +107,7 @@ def insert_task(course_information, course_title, course_id, headline, due, url,
         course_information[course_title] = []
     course_information[course_title].append({"id": course_id, "headline": headline, "due": due, "url": url, "description": description})
 
-def insert_event(course_information, course_title, course_id, headline, start_dt, end_dt, url):
+def insert_event(course_information, course_title, course_id, headline, start_dt, end_dt, url, description):
     if course_title not in course_information:
         course_information[course_title] = []
     course_information[course_title].append({"id": course_id, "headline": headline, "start_dt": start_dt, "end_dt": end_dt, "url": url, "description": description})
