@@ -90,7 +90,7 @@ def make_date(ics_event, assignment):
     else:
         dtstart = ics_event.get('dtstart').dt
         dtend = ics_event.get('dtend').dt if ics_event.get('dtend') is not None else ics_event.get('dtstart').dt
-        print(type(dtstart))
+        # print(type(dtstart))
         if type(dtstart) == datetime.date:
             date_start = datetime.datetime(dtstart.year, dtstart.month, dtstart.day, 00, 00, tzinfo=tz)
         else:
