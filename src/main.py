@@ -146,7 +146,7 @@ def process_component(course_information, component, base_url, orgignorefile, ig
         return None
 
     date_start, date_end = make_date(component, assignment)
-    date_filter_start = datetime.datetime.now(tz) - datetime.timedelta(days=7)
+    date_filter_start = datetime.datetime.now(tz) - datetime.timedelta(days=14)
     date_filter_end = datetime.datetime.now(tz) + datetime.timedelta(days=date_delta)
 
     if (date_filter_start <= date_start <= date_filter_end):

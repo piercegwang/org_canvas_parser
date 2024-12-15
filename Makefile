@@ -4,7 +4,7 @@
 # @file
 # @version 0.1
 
-PYTHON_VERSION=3.10
+PYTHON_VERSION=3.11
 
 venv:
 	python -m venv py${PYTHON_VERSION}
